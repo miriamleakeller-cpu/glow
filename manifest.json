@@ -1,0 +1,14 @@
+{
+  "name": "Glow",
+  "short_name": "Glow",
+  "description": "Meditation, reading, exercises and gratitude - one small glow every day.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#13131A",
+  "theme_color": "#13131A",
+  "icons": [
+    { "src": "icon-180.png", "sizes": "180x180", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}

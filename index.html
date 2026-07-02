@@ -1,0 +1,819 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+<title>Glow</title>
+
+<!-- PWA / iOS -->
+<link rel="manifest" href="manifest.json">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Glow">
+<meta name="theme-color" content="#13131A">
+<link rel="apple-touch-icon" href="icon-180.png">
+
+<!-- Heading font (cached by the service worker after first load) -->
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+
+<!-- E-book library (cached by the service worker for offline use) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/epub.js/0.3.93/epub.min.js"></script>
+
+<style>
+/* ========== Palette ========== */
+:root{
+  --black:#13131A;
+  --darkgray:#28282F;
+  --gray:#B1B1B1;
+  --white:#FBFBFB;
+  --future:#B2FF00;
+  --sky:#1AAEFC;
+  --violet:#8455EA;
+  --yellow:#F9EE4A;
+  --lightpink:#F1BFE9;
+  --green:#1FA45B;
+  --blue:#6E8FE8;
+  --orange:#F79438;
+  --red:#E95F5D;
+  --darkgreen:#2E7D5B;
+  --brown:#A87C4F;
+  --radius:22px;
+  --sans:-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --display:"Space Grotesk", -apple-system, sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+body{
+  font-family:var(--sans);
+  background:var(--black);
+  color:var(--white);
+  overscroll-behavior:none;
+  -webkit-font-smoothing:antialiased;
+  touch-action:manipulation;
+}
+h1,h2,h3{font-family:var(--display);font-weight:700;letter-spacing:-.3px}
+
+/* ========== Layout ========== */
+.view{display:none;min-height:100dvh;padding:calc(env(safe-area-inset-top) + 20px) 20px calc(env(safe-area-inset-bottom) + 40px)}
+.view.active{display:block}
+.page-title{font-size:34px;line-height:1.05}
+.home-date{color:var(--gray);font-size:14px;font-weight:600;letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;padding-right:56px}
+.sub{color:var(--gray);font-size:15px;margin-top:10px;line-height:1.5}
+.card{background:var(--darkgray);border-radius:var(--radius);padding:20px;margin-top:16px}
+.card h3{font-size:18px;color:var(--white)}
+
+/* ========== Buttons ========== */
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  border:none;border-radius:999px;cursor:pointer;
+  font-family:var(--display);font-size:15px;font-weight:700;
+  padding:14px 20px;min-height:50px;width:100%;
+  background:var(--violet);color:var(--white);
+  transition:transform .12s ease;
+}
+.btn:active{transform:scale(.97)}
+.btn.ghost{background:var(--black);color:var(--white);border:1.5px solid #3A3A44}
+.iconbtn{
+  border:1.5px solid #3A3A44;background:var(--darkgray);color:var(--white);border-radius:999px;
+  width:42px;height:42px;font-size:18px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex:none
+}
+input[type=file]{display:none}
+
+/* ========== Menu (three lines, top right) ========== */
+#menubtn{
+  position:fixed;top:calc(env(safe-area-inset-top) + 16px);right:18px;z-index:60;
+  width:46px;height:46px;border-radius:999px;border:none;cursor:pointer;
+  background:var(--darkgray);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px
+}
+#menubtn i{display:block;width:20px;height:2px;background:var(--white);border-radius:2px}
+#menu{
+  position:fixed;inset:0;z-index:70;background:var(--black);
+  display:none;flex-direction:column;justify-content:center;padding:0 32px
+}
+#menu.open{display:flex}
+#menu button.item{
+  border:none;background:none;text-align:left;cursor:pointer;
+  font-family:var(--display);font-weight:700;font-size:36px;color:var(--white);
+  padding:16px 0;display:flex;align-items:center;gap:16px
+}
+#menu button.item i{width:14px;height:14px;border-radius:50%;flex:none}
+#menu .close{
+  position:absolute;top:calc(env(safe-area-inset-top) + 16px);right:18px;
+  width:46px;height:46px;border-radius:999px;border:none;background:var(--darkgray);
+  color:var(--white);font-size:20px;cursor:pointer
+}
+
+/* ========== Home: lava blobs ========== */
+.blobfield{position:relative;height:560px;margin-top:10px}
+.blob-btn{position:absolute;border:none;background:none;padding:0;cursor:pointer;animation:drift 9s ease-in-out infinite alternate}
+.blob-btn:active{transform:scale(.95)}
+.blob{
+  width:180px;height:172px;position:relative;
+  animation:morph 8s ease-in-out infinite alternate;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px
+}
+.blob-label{
+  font-family:var(--display);font-weight:700;font-size:15px;letter-spacing:2.5px;
+  text-transform:uppercase;color:var(--white);position:relative;z-index:2
+}
+@keyframes morph{
+  0%  {border-radius:42% 58% 62% 38% / 52% 38% 62% 48%}
+  33% {border-radius:63% 37% 42% 58% / 38% 62% 36% 64%}
+  66% {border-radius:38% 62% 58% 42% / 62% 40% 66% 34%}
+  100%{border-radius:58% 42% 36% 64% / 42% 62% 38% 58%}
+}
+@keyframes drift{
+  0%{transform:translate(0,0)}
+  50%{transform:translate(8px,-16px)}
+  100%{transform:translate(-7px,10px)}
+}
+#blob-med {top:0;left:2%;animation-duration:8.5s}
+#blob-read{top:96px;right:0;animation-duration:7.2s;animation-delay:-3s}
+#blob-ex  {bottom:150px;left:4%;animation-duration:9.4s;animation-delay:-5s}
+#blob-gr  {bottom:0;right:8%;animation-duration:7.9s;animation-delay:-1.5s}
+#blob-med .blob{
+  background:radial-gradient(circle at 30% 28%, var(--yellow), transparent 58%),
+             radial-gradient(circle at 72% 70%, var(--red), transparent 62%),
+             var(--orange);
+  box-shadow:0 0 70px -12px var(--orange);
+  animation-delay:-2s;
+}
+#blob-read .blob{
+  background:radial-gradient(circle at 68% 26%, var(--green), transparent 55%),
+             radial-gradient(circle at 26% 72%, var(--sky), transparent 62%),
+             var(--darkgreen);
+  box-shadow:0 0 70px -12px var(--green);
+  animation-delay:-4s;
+}
+#blob-ex .blob{
+  background:radial-gradient(circle at 30% 30%, var(--sky), transparent 58%),
+             radial-gradient(circle at 74% 68%, var(--violet), transparent 62%),
+             var(--blue);
+  box-shadow:0 0 70px -12px var(--sky);
+  animation-delay:-6s;
+}
+#blob-gr .blob{
+  background:radial-gradient(circle at 30% 24%, var(--red), transparent 60%),
+             radial-gradient(circle at 74% 76%, var(--red), transparent 55%),
+             var(--lightpink);
+  box-shadow:0 0 70px -12px var(--red);
+  animation-delay:-1s;
+}
+
+/* ========== Sub pages ========== */
+.topbar{display:flex;align-items:center;gap:12px;margin-bottom:8px;padding-right:56px}
+.topbar h1{font-size:26px}
+
+/* colored selection tiles */
+.tile{
+  display:flex;align-items:center;justify-content:space-between;
+  width:100%;text-align:left;border:none;cursor:pointer;
+  border-radius:20px;padding:20px;margin-top:12px;
+  font-family:var(--display);font-size:17px;font-weight:700;
+  transition:transform .12s ease;
+}
+.tile:active{transform:scale(.98)}
+.tile.c-med{background:var(--orange);color:var(--black)}
+.tile.c-read{background:var(--darkgreen);color:var(--white)}
+.tile.c-ex{background:var(--blue);color:var(--black)}
+
+/* library lists */
+.list-item{display:flex;align-items:center;gap:10px;padding:13px 2px;border-bottom:1.5px solid #3A3A44}
+.list-item:last-child{border-bottom:none}
+.li-dot{width:12px;height:12px;border-radius:50%;flex:none}
+.li-title{font-weight:600;font-size:16px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--white)}
+.li-act{border:none;background:none;color:var(--gray);font-size:17px;padding:8px;cursor:pointer}
+.empty{color:var(--gray);font-size:15px;line-height:1.6;padding:8px 2px}
+
+input[type=text]{
+  width:100%;border:1.5px solid #3A3A44;border-radius:16px;background:var(--black);
+  font-family:var(--sans);font-size:16px;color:var(--white);padding:13px 14px;margin-top:10px;outline:none
+}
+input[type=text]:focus{border-color:var(--violet)}
+audio,video{width:100%;border-radius:18px;margin-top:14px}
+video{background:#000}
+
+/* gratitude entries */
+.gr-entry{padding:14px 0;border-bottom:1.5px solid #3A3A44}
+.gr-entry:last-child{border-bottom:none}
+.gr-date{font-family:var(--display);font-size:13px;font-weight:700;color:var(--violet)}
+.gr-entry ul{margin:6px 0 0 18px;font-size:15px;line-height:1.7;color:var(--white)}
+
+/* ========== Calendar ========== */
+.stat-num{font-family:var(--display);font-size:42px;font-weight:700;line-height:1}
+.stat-label{color:var(--gray);font-size:13px;margin-top:4px}
+.cal-head{display:flex;align-items:center;justify-content:space-between}
+.cal-month{font-family:var(--display);font-size:20px;font-weight:700}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-top:14px}
+.cal-wd{text-align:center;font-size:11px;font-weight:700;color:var(--gray);padding:4px 0}
+.cal-day{
+  aspect-ratio:1/1.2;border-radius:12px;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:4px;font-size:14px
+}
+.cal-day.today{border:1.5px solid var(--white);font-weight:700}
+.cal-dots{display:flex;gap:3px;height:6px;flex-wrap:wrap;justify-content:center;max-width:26px}
+.cal-dots i{width:6px;height:6px;border-radius:50%}
+.dot-med{background:var(--orange)} .dot-read{background:var(--darkgreen)}
+.dot-ex{background:var(--blue)} .dot-gr{background:var(--lightpink)}
+.legend{display:flex;flex-wrap:nowrap;gap:10px;margin-top:16px;font-size:11px;color:var(--gray);justify-content:space-between}
+.legend span{display:flex;align-items:center;gap:5px;white-space:nowrap}
+.legend i{width:8px;height:8px;border-radius:50%;display:inline-block;flex:none}
+
+/* word cloud */
+.cloud{position:relative;height:240px;margin-top:8px}
+.cloud span{
+  position:absolute;font-family:var(--display);font-weight:700;white-space:nowrap;
+  animation:drift 8s ease-in-out infinite alternate;
+}
+
+/* ========== Reader ========== */
+#view-reader{position:fixed;inset:0;z-index:100;background:var(--black);color:var(--white);display:none;flex-direction:column}
+#view-reader.active{display:flex}
+#view-reader.light{background:var(--white);color:var(--black)}
+#view-reader.light .iconbtn{background:#EDEDED;color:var(--black);border-color:#D5D5D5}
+.reader-bar{display:flex;align-items:center;gap:8px;padding:calc(env(safe-area-inset-top) + 10px) 14px 10px;flex:none}
+.reader-title{flex:1;font-family:var(--display);font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#epub-area{flex:1;position:relative;overflow:hidden}
+.tapzone{position:absolute;top:0;bottom:0;width:30%;z-index:5}
+.tapzone.left{left:0}.tapzone.right{right:0}
+.reader-foot{flex:none;text-align:center;font-size:12px;color:var(--gray);padding:8px 0 calc(env(safe-area-inset-bottom) + 10px)}
+
+/* ========== Dialog (replaces prompt/confirm, which are blocked in some environments) ========== */
+#modal{position:fixed;inset:0;z-index:150;background:rgba(19,19,26,.78);display:none;align-items:center;justify-content:center;padding:24px}
+#modal.open{display:flex}
+.modal-box{background:var(--darkgray);border-radius:22px;padding:22px;width:100%;max-width:340px}
+.modal-title{font-family:var(--display);font-weight:700;font-size:17px;color:var(--white);line-height:1.4;overflow-wrap:anywhere}
+.modal-actions{display:flex;gap:10px;margin-top:18px}
+.modal-actions .btn{min-height:46px;padding:10px 14px}
+
+/* ========== Toast ========== */
+#toast{
+  position:fixed;left:50%;transform:translateX(-50%) translateY(20px);bottom:calc(env(safe-area-inset-bottom) + 30px);
+  background:var(--violet);color:var(--white);font-family:var(--display);font-size:14px;font-weight:700;
+  padding:12px 20px;border-radius:999px;
+  opacity:0;pointer-events:none;transition:all .25s ease;z-index:200;max-width:85vw;text-align:center
+}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+@media (prefers-reduced-motion: reduce){
+  *{transition:none !important;animation:none !important}
+}
+</style>
+</head>
+<body>
+
+<div id="toast"></div>
+
+<div id="modal">
+  <div class="modal-box">
+    <div class="modal-title" id="modal-title"></div>
+    <input type="text" id="modal-input" autocomplete="off">
+    <div class="modal-actions">
+      <button class="btn ghost" id="modal-cancel">Cancel</button>
+      <button class="btn" id="modal-ok">OK</button>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== MENU ==================== -->
+<button id="menubtn" aria-label="Menu" onclick="toggleMenu(true)"><i></i><i></i><i></i></button>
+<div id="menu">
+  <button class="close" aria-label="Close menu" onclick="toggleMenu(false)">✕</button>
+  <button class="item" onclick="toggleMenu(false); show('home')"><i style="background:var(--violet)"></i>Home</button>
+  <button class="item" onclick="toggleMenu(false); show('library')"><i style="background:var(--orange)"></i>Library</button>
+  <button class="item" onclick="toggleMenu(false); show('calendar')"><i style="background:var(--blue)"></i>Streak</button>
+  <button class="item" onclick="toggleMenu(false); show('cloud')"><i style="background:var(--lightpink)"></i>Archive</button>
+</div>
+
+<!-- ==================== HOME ==================== -->
+<section class="view active" id="view-home">
+  <div class="home-date" id="home-date"></div>
+  <h1 class="page-title" id="home-greeting">Get glowing!</h1>
+  <div class="blobfield" id="blobfield"></div>
+</section>
+
+<!-- ==================== MEDITATION ==================== -->
+<section class="view" id="view-meditate">
+  <div class="topbar">
+    <button class="iconbtn" onclick="show('home')">←</button>
+    <h1>Meditation</h1>
+  </div>
+  <p class="sub" id="sub-med">Pick a meditation and follow along.</p>
+  <div id="audio-tiles"></div>
+  <audio id="audio-player" controls style="display:none"></audio>
+</section>
+
+<!-- ==================== READING ==================== -->
+<section class="view" id="view-read">
+  <div class="topbar">
+    <button class="iconbtn" onclick="show('home')">←</button>
+    <h1>Reading</h1>
+  </div>
+  <p class="sub" id="sub-read">Pick a book and get reading.</p>
+  <div id="book-tiles"></div>
+</section>
+
+<!-- ==================== READER (fullscreen) ==================== -->
+<section id="view-reader">
+  <div class="reader-bar">
+    <button class="iconbtn" onclick="closeReader()">←</button>
+    <div class="reader-title" id="reader-title"></div>
+    <button class="iconbtn" onclick="readerFont(-1)" aria-label="Smaller text">A−</button>
+    <button class="iconbtn" onclick="readerFont(1)" aria-label="Larger text">A＋</button>
+    <button class="iconbtn" id="theme-toggle" onclick="toggleReaderTheme()" aria-label="Switch light and dark mode">◐</button>
+  </div>
+  <div id="epub-area">
+    <div class="tapzone left" onclick="rendition && rendition.prev()"></div>
+    <div class="tapzone right" onclick="rendition && rendition.next()"></div>
+  </div>
+  <div class="reader-foot" id="reader-foot">Tap left or right to turn pages</div>
+</section>
+
+<!-- ==================== EXERCISES ==================== -->
+<section class="view" id="view-exercise">
+  <div class="topbar">
+    <button class="iconbtn" onclick="show('home')">←</button>
+    <h1>Exercises</h1>
+  </div>
+  <p class="sub" id="sub-ex">Pick a video and move along.</p>
+  <div id="video-tiles"></div>
+  <video id="video-player" controls playsinline style="display:none"></video>
+</section>
+
+<!-- ==================== GRATITUDE ==================== -->
+<section class="view" id="view-gratitude">
+  <div class="topbar">
+    <button class="iconbtn" onclick="show('home')">←</button>
+    <h1>Gratitude</h1>
+  </div>
+
+  <div class="card">
+    <h3>Three things I&rsquo;m grateful for today</h3>
+    <input type="text" id="gr1" placeholder="1.">
+    <input type="text" id="gr2" placeholder="2.">
+    <input type="text" id="gr3" placeholder="3.">
+    <button class="btn" style="margin-top:14px" onclick="saveGratitude()">Save</button>
+  </div>
+</section>
+
+<!-- ==================== LIBRARY ==================== -->
+<section class="view" id="view-library">
+  <div class="topbar">
+    <button class="iconbtn" onclick="show('home')">←</button>
+    <h1>Library</h1>
+  </div>
+
+  <div class="card">
+    <h3>Meditations</h3>
+    <div id="lib-audio-list"><p class="empty">No meditations yet.</p></div>
+    <label class="btn ghost" style="margin-top:14px" for="audio-upload">＋ add audio</label>
+    <input type="file" id="audio-upload" accept="audio/*">
+  </div>
+
+  <div class="card">
+    <h3>Books</h3>
+    <div id="lib-book-list"><p class="empty">No books yet.</p></div>
+    <label class="btn ghost" style="margin-top:14px" for="book-upload">＋ add epub</label>
+    <input type="file" id="book-upload" accept=".epub,application/epub+zip">
+  </div>
+
+  <div class="card">
+    <h3>Exercises</h3>
+    <div id="lib-video-list"><p class="empty">No exercises yet.</p></div>
+    <label class="btn ghost" style="margin-top:14px" for="video-upload">＋ add video</label>
+    <input type="file" id="video-upload" accept="video/*">
+  </div>
+</section>
+
+<!-- ==================== CALENDAR ==================== -->
+<section class="view" id="view-calendar">
+  <div class="topbar">
+    <button class="iconbtn" onclick="show('home')">←</button>
+    <h1>Streak</h1>
+  </div>
+
+  <div class="card">
+    <div style="display:flex;gap:28px">
+      <div><div class="stat-num" id="cal-streak">0</div><div class="stat-label">day streak</div></div>
+      <div><div class="stat-num" id="cal-month-count">0</div><div class="stat-label">activities this month</div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="cal-head">
+      <button class="iconbtn" onclick="calShift(-1)">‹</button>
+      <div class="cal-month" id="cal-month-label"></div>
+      <button class="iconbtn" onclick="calShift(1)">›</button>
+    </div>
+    <div class="cal-grid" id="cal-grid"></div>
+    <div class="legend">
+      <span><i class="dot-med"></i>Meditation</span>
+      <span><i class="dot-read"></i>Reading</span>
+      <span><i class="dot-ex"></i>Exercises</span>
+      <span><i class="dot-gr"></i>Gratitude</span>
+    </div>
+  </div>
+</section>
+
+<!-- ==================== GRATITUDE CLOUD ==================== -->
+<section class="view" id="view-cloud">
+  <div class="topbar">
+    <button class="iconbtn" onclick="show('home')">←</button>
+    <h1>Archive</h1>
+  </div>
+
+  <div class="card">
+    <div class="cloud" id="cloud"><p class="empty">Your gratitude words will float here.</p></div>
+  </div>
+
+  <div class="card">
+    <h3>Past entries</h3>
+    <div id="gratitude-list"><p class="empty">No entries yet.</p></div>
+  </div>
+</section>
+
+<script>
+/* =====================================================
+   Database (IndexedDB): books, videos, audio, gratitude,
+   completed days, reading positions. All local, offline.
+   ===================================================== */
+let db;
+function openDB(){
+  return new Promise((res, rej) => {
+    const req = indexedDB.open('glowDB', 1);
+    req.onupgradeneeded = e => {
+      const d = e.target.result;
+      const files = d.createObjectStore('files', {keyPath:'id', autoIncrement:true});
+      files.createIndex('type','type');
+      d.createObjectStore('days', {keyPath:'date'});
+      const gr = d.createObjectStore('gratitude', {keyPath:'id', autoIncrement:true});
+      gr.createIndex('date','date');
+      d.createObjectStore('positions', {keyPath:'bookId'});
+      d.createObjectStore('settings', {keyPath:'key'});
+    };
+    req.onsuccess = e => { db = e.target.result; res(); };
+    req.onerror = () => rej(req.error);
+  });
+}
+function tx(store, mode){ return db.transaction(store, mode).objectStore(store); }
+function dbPut(store, val){ return new Promise((res,rej)=>{ const r = tx(store,'readwrite').put(val); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }); }
+function dbGet(store, key){ return new Promise((res,rej)=>{ const r = tx(store,'readonly').get(key); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }); }
+function dbAll(store){ return new Promise((res,rej)=>{ const r = tx(store,'readonly').getAll(); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }); }
+function dbDel(store, key){ return new Promise((res,rej)=>{ const r = tx(store,'readwrite').delete(key); r.onsuccess=()=>res(); r.onerror=()=>rej(r.error); }); }
+
+/* ===================== Helpers ===================== */
+function todayKey(d = new Date()){
+  const p = n => String(n).padStart(2,'0');
+  return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`;
+}
+function fmtDate(key){
+  const [y,m,d] = key.split('-').map(Number);
+  return new Date(y, m-1, d).toLocaleDateString('en-US', {weekday:'long', month:'long', day:'numeric'});
+}
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(t._h); t._h = setTimeout(()=>t.classList.remove('show'), 2200);
+}
+function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;'); }
+
+/* In-app dialog: prompt() and confirm() are blocked in sandboxed previews
+   and unreliable in installed iOS web apps, so we use our own. */
+function openModal(title, withInput, def){
+  return new Promise(res => {
+    const m = document.getElementById('modal');
+    const inp = document.getElementById('modal-input');
+    document.getElementById('modal-title').textContent = title;
+    inp.style.display = withInput ? 'block' : 'none';
+    inp.value = def || '';
+    m.classList.add('open');
+    if(withInput) setTimeout(() => { inp.focus(); inp.select(); }, 60);
+    const ok = document.getElementById('modal-ok');
+    const cancel = document.getElementById('modal-cancel');
+    const done = val => { m.classList.remove('open'); ok.onclick = cancel.onclick = null; res(val); };
+    ok.onclick = () => done(withInput ? inp.value : true);
+    cancel.onclick = () => done(null);
+  });
+}
+const askText = (title, def) => openModal(title, true, def);
+const askConfirm = title => openModal(title, false);
+
+const GREETINGS = [
+  'Get glowing!', 'Let\u2019s glow!', 'It\u2019s glow time!',
+  'Ready, set, glow!', 'Time to glow!', 'Let\u2019s get glowing!'
+];
+
+/* ===================== Menu & views ===================== */
+function toggleMenu(open){
+  document.getElementById('menu').classList.toggle('open', open);
+}
+function show(name){
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById('view-'+name).classList.add('active');
+  window.scrollTo(0,0);
+  if(name==='home') renderHome();
+  if(name==='calendar') renderCalendar();
+  if(name==='cloud'){ renderCloud(); renderGratitudeList(); }
+  if(name==='meditate') renderTiles('audio','audio-tiles','c-med', playAudio, 'No meditations yet. Add audio files in the library.', 'sub-med');
+  if(name==='read') renderTiles('book','book-tiles','c-read', openBook, 'No books yet. Add epub files in the library.', 'sub-read');
+  if(name==='exercise') renderTiles('video','video-tiles','c-ex', playVideo, 'No exercises yet. Add video files in the library.', 'sub-ex');
+  if(name==='library') renderLibraryLists();
+}
+
+/* ===================== Days & streak ===================== */
+const KINDS = ['med','read','ex','gr'];
+async function getDay(key){ return (await dbGet('days', key)) || {date:key, med:false, read:false, ex:false, gr:false}; }
+async function markDone(kind){
+  const day = await getDay(todayKey());
+  if(day[kind]) return;
+  day[kind] = true;
+  await dbPut('days', day);
+}
+async function computeStreak(){
+  const all = await dbAll('days');
+  const active = new Set(all.filter(d => KINDS.some(k => d[k])).map(d => d.date));
+  let streak = 0;
+  const cur = new Date();
+  if(!active.has(todayKey(cur))) cur.setDate(cur.getDate()-1); /* today counts once something is done */
+  while(active.has(todayKey(cur))){ streak++; cur.setDate(cur.getDate()-1); }
+  return streak;
+}
+
+/* ===================== Home: lava blobs ===================== */
+const BLOBS = [
+  {id:'blob-med',  kind:'med',  label:'Meditation', view:'meditate'},
+  {id:'blob-read', kind:'read', label:'Reading',    view:'read'},
+  {id:'blob-ex',   kind:'ex',   label:'Exercises',  view:'exercise'},
+  {id:'blob-gr',   kind:'gr',   label:'Gratitude',  view:'gratitude'},
+];
+function buildBlobs(){
+  const field = document.getElementById('blobfield');
+  field.innerHTML = '';
+  for(const b of BLOBS){
+    const btn = document.createElement('button');
+    btn.className = 'blob-btn';
+    btn.id = b.id;
+    btn.setAttribute('aria-label', b.label);
+    btn.innerHTML = `<div class="blob"><span class="blob-label">${b.label}</span></div>`;
+    btn.onclick = () => show(b.view);
+    field.appendChild(btn);
+  }
+}
+async function renderHome(){
+  document.getElementById('home-greeting').textContent =
+    GREETINGS[Math.floor(Math.random()*GREETINGS.length)];
+  document.getElementById('home-date').textContent =
+    new Date().toLocaleDateString('en-US', {weekday:'long', month:'long', day:'numeric'});
+}
+
+/* ===================== Library: add / rename / delete ===================== */
+const FILE_META = {
+  audio:{list:'lib-audio-list', dot:'var(--orange)',    noun:'meditation', empty:'No meditations yet.'},
+  book: {list:'lib-book-list',  dot:'var(--darkgreen)', noun:'book',       empty:'No books yet.'},
+  video:{list:'lib-video-list', dot:'var(--blue)',      noun:'exercise',   empty:'No exercises yet.'},
+};
+async function addFile(type, file){
+  const fallback = file.name.replace(/\.[^.]+$/,'');
+  const answer = await askText('Name for this ' + FILE_META[type].noun + ':', fallback);
+  if(answer === null) return; /* cancelled */
+  const name = answer.trim() || fallback;
+  await dbPut('files', {type, name, blob:file, added:Date.now()});
+  renderLibraryLists();
+  toast('Saved \u201C' + name + '\u201D');
+}
+document.getElementById('audio-upload').addEventListener('change', e => { if(e.target.files[0]) addFile('audio', e.target.files[0]); e.target.value=''; });
+document.getElementById('book-upload').addEventListener('change',  e => { if(e.target.files[0]) addFile('book',  e.target.files[0]); e.target.value=''; });
+document.getElementById('video-upload').addEventListener('change', e => { if(e.target.files[0]) addFile('video', e.target.files[0]); e.target.value=''; });
+
+async function renderLibraryLists(){
+  const all = await dbAll('files');
+  for(const type of Object.keys(FILE_META)){
+    const meta = FILE_META[type];
+    const items = all.filter(f => f.type === type).sort((a,b)=>a.added-b.added);
+    const el = document.getElementById(meta.list);
+    if(!items.length){ el.innerHTML = '<p class="empty">' + meta.empty + '</p>'; continue; }
+    el.innerHTML = '';
+    for(const it of items){
+      const row = document.createElement('div');
+      row.className = 'list-item';
+      row.innerHTML = `<span class="li-dot" style="background:${meta.dot}"></span>
+        <span class="li-title">${esc(it.name)}</span>
+        <button class="li-act" aria-label="Rename">✎</button>
+        <button class="li-act" aria-label="Delete">✕</button>`;
+      const [renameBtn, delBtn] = row.querySelectorAll('.li-act');
+      renameBtn.onclick = async () => {
+        const n = await askText('New name:', it.name);
+        if(n && n.trim()){ it.name = n.trim(); await dbPut('files', it); renderLibraryLists(); }
+      };
+      delBtn.onclick = async () => {
+        if(await askConfirm('Delete \u201C' + it.name + '\u201D?')){
+          await dbDel('files', it.id);
+          if(type === 'book') await dbDel('positions', it.id);
+          renderLibraryLists();
+        }
+      };
+      el.appendChild(row);
+    }
+  }
+}
+
+/* ===================== Colored tiles in each activity ===================== */
+async function renderTiles(type, containerId, colorClass, onPick, emptyMsg, subId){
+  const items = (await dbAll('files')).filter(f => f.type === type).sort((a,b)=>a.added-b.added);
+  const el = document.getElementById(containerId);
+  const sub = subId ? document.getElementById(subId) : null;
+  if(sub) sub.style.display = items.length ? 'block' : 'none';
+  if(!items.length){ el.innerHTML = '<p class="empty">' + emptyMsg + '</p>'; return; }
+  el.innerHTML = '';
+  for(const it of items){
+    const t = document.createElement('button');
+    t.className = 'tile ' + colorClass;
+    t.innerHTML = `<span>${esc(it.name)}</span><span>›</span>`;
+    t.onclick = () => onPick(it);
+    el.appendChild(t);
+  }
+}
+
+/* ===================== Meditation (done when audio ends) ===================== */
+function playAudio(item){
+  const p = document.getElementById('audio-player');
+  p.src = URL.createObjectURL(item.blob);
+  p.style.display = 'block';
+  p.onended = () => markDone('med');
+  p.play().catch(()=>{});
+}
+
+/* ===================== Gratitude (done when an entry is saved) ===================== */
+async function saveGratitude(){
+  const items = ['gr1','gr2','gr3'].map(id => document.getElementById(id).value.trim()).filter(Boolean);
+  if(!items.length) return;
+  await dbPut('gratitude', {date: todayKey(), items, ts: Date.now()});
+  ['gr1','gr2','gr3'].forEach(id => document.getElementById(id).value = '');
+  await markDone('gr');
+  toast('Saved');
+}
+async function renderGratitudeList(){
+  const entries = (await dbAll('gratitude')).sort((a,b) => b.ts - a.ts);
+  const el = document.getElementById('gratitude-list');
+  if(!entries.length){ el.innerHTML = '<p class="empty">No entries yet.</p>'; return; }
+  el.innerHTML = '';
+  for(const en of entries){
+    const div = document.createElement('div');
+    div.className = 'gr-entry';
+    div.innerHTML = `<div class="gr-date">${fmtDate(en.date)}</div><ul>${en.items.map(i => '<li>' + esc(i) + '</li>').join('')}</ul>`;
+    el.appendChild(div);
+  }
+}
+
+/* ===================== Reading (done after the first page turn) ===================== */
+let currentBook = null, rendition = null, fontPct = 100, relocations = 0;
+
+async function openBook(rec){
+  document.getElementById('view-reader').classList.add('active');
+  document.getElementById('reader-title').textContent = rec.name;
+  document.getElementById('reader-foot').textContent = 'Opening\u2026';
+  relocations = 0;
+
+  const buf = await rec.blob.arrayBuffer();
+  currentBook = ePub(buf);
+  rendition = currentBook.renderTo('epub-area', {width:'100%', height:'100%', flow:'paginated', spread:'none'});
+
+  rendition.themes.register('light', {body:{background:'#FBFBFB', color:'#13131A',
+    'font-family':'Georgia, serif', 'line-height':'1.6', padding:'0 4px'}});
+  rendition.themes.register('dark',  {body:{background:'#13131A', color:'#FBFBFB',
+    'font-family':'Georgia, serif', 'line-height':'1.6', padding:'0 4px'}});
+
+  const darkSetting = await dbGet('settings','readerDark');
+  setReaderDark(darkSetting ? darkSetting.value : true, false);
+
+  const fontSetting = await dbGet('settings','readerFont');
+  fontPct = fontSetting ? fontSetting.value : 100;
+  rendition.themes.fontSize(fontPct + '%');
+
+  const pos = await dbGet('positions', rec.id);
+  await rendition.display(pos ? pos.cfi : undefined);
+
+  rendition.on('relocated', loc => {
+    relocations++;
+    if(relocations >= 2) markDone('read'); /* first event = opening, second = a real page turn */
+    dbPut('positions', {bookId: rec.id, cfi: loc.start.cfi});
+    const pct = currentBook.locations && currentBook.locations.length()
+      ? Math.round(currentBook.locations.percentageFromCfi(loc.start.cfi)*100) + ' %' : '';
+    document.getElementById('reader-foot').textContent = pct || 'Tap left or right to turn pages';
+  });
+  currentBook.locations.generate(600).catch(()=>{});
+  document.getElementById('reader-foot').textContent = 'Tap left or right to turn pages';
+}
+function closeReader(){
+  document.getElementById('view-reader').classList.remove('active');
+  if(rendition){ rendition.destroy(); rendition = null; }
+  if(currentBook){ currentBook.destroy(); currentBook = null; }
+  renderHome();
+}
+function setReaderDark(on, save = true){
+  document.getElementById('view-reader').classList.toggle('light', !on);
+  if(rendition) rendition.themes.select(on ? 'dark' : 'light');
+  if(save) dbPut('settings', {key:'readerDark', value:on});
+}
+function toggleReaderTheme(){
+  setReaderDark(document.getElementById('view-reader').classList.contains('light'));
+}
+function readerFont(dir){
+  fontPct = Math.min(160, Math.max(70, fontPct + dir*10));
+  if(rendition) rendition.themes.fontSize(fontPct + '%');
+  dbPut('settings', {key:'readerFont', value:fontPct});
+}
+
+/* ===================== Exercises (done when the video ends) ===================== */
+function playVideo(item){
+  const p = document.getElementById('video-player');
+  p.src = URL.createObjectURL(item.blob);
+  p.style.display = 'block';
+  p.onended = () => markDone('ex');
+  p.play().catch(()=>{});
+}
+
+/* ===================== Calendar ===================== */
+let calDate = new Date();
+function calShift(n){ calDate.setMonth(calDate.getMonth()+n); renderCalendar(); }
+async function renderCalendar(){
+  const y = calDate.getFullYear(), m = calDate.getMonth();
+  document.getElementById('cal-month-label').textContent =
+    calDate.toLocaleDateString('en-US', {month:'long', year:'numeric'});
+
+  const all = await dbAll('days');
+  const byDate = Object.fromEntries(all.map(d => [d.date, d]));
+
+  const grid = document.getElementById('cal-grid');
+  grid.innerHTML = ['Mo','Tu','We','Th','Fr','Sa','Su']
+    .map(w => `<div class="cal-wd">${w}</div>`).join('');
+
+  const first = new Date(y, m, 1);
+  const offset = (first.getDay() + 6) % 7;          /* Monday = 0 */
+  const daysInMonth = new Date(y, m+1, 0).getDate();
+  for(let i=0; i<offset; i++) grid.appendChild(document.createElement('div'));
+
+  const dotClass = {med:'dot-med', read:'dot-read', ex:'dot-ex', gr:'dot-gr'};
+  let monthCount = 0;
+  for(let d=1; d<=daysInMonth; d++){
+    const key = todayKey(new Date(y, m, d));
+    const rec = byDate[key];
+    const cell = document.createElement('div');
+    cell.className = 'cal-day' + (key === todayKey() ? ' today' : '');
+    let dots = '';
+    if(rec) for(const k of KINDS) if(rec[k]){ dots += `<i class="${dotClass[k]}"></i>`; monthCount++; }
+    cell.innerHTML = `<span>${d}</span><span class="cal-dots">${dots}</span>`;
+    grid.appendChild(cell);
+  }
+  document.getElementById('cal-month-count').textContent = monthCount;
+  document.getElementById('cal-streak').textContent = await computeStreak();
+}
+
+/* ===================== Gratitude Cloud (random pick each visit) ===================== */
+const CLOUD_SLOTS = [
+  {top:'6%',  left:'2%'},  {top:'0%',  left:'52%'},
+  {top:'26%', left:'30%'}, {top:'34%', left:'70%'},
+  {top:'50%', left:'4%'},  {top:'58%', left:'48%'},
+  {top:'74%', left:'22%'}, {top:'82%', left:'64%'},
+  {top:'44%', left:'84%'}, {top:'14%', left:'80%'}
+];
+const CLOUD_COLORS = ['var(--blue)','var(--sky)','var(--violet)','var(--yellow)','var(--lightpink)','var(--orange)'];
+async function renderCloud(){
+  const entries = await dbAll('gratitude');
+  const el = document.getElementById('cloud');
+  const words = [...new Set(entries.flatMap(e => e.items).map(w => w.trim()).filter(Boolean))];
+  if(!words.length){ el.innerHTML = '<p class="empty">Your gratitude words will float here.</p>'; return; }
+  words.sort(() => Math.random() - .5);
+  const picks = words.slice(0, Math.min(10, Math.max(5, words.length)));
+  el.innerHTML = '';
+  picks.forEach((w, i) => {
+    const s = document.createElement('span');
+    s.textContent = w.length > 24 ? w.slice(0,24) + '\u2026' : w;
+    const slot = CLOUD_SLOTS[i % CLOUD_SLOTS.length];
+    s.style.top = slot.top; s.style.left = slot.left;
+    s.style.color = CLOUD_COLORS[i % CLOUD_COLORS.length];
+    s.style.fontSize = (14 + (i % 3) * 4) + 'px';
+    s.style.animationDuration = (6 + (i % 5)) + 's';
+    s.style.animationDelay = (-i * 1.3) + 's';
+    el.appendChild(s);
+  });
+}
+
+/* ===================== Start ===================== */
+(async function init(){
+  await openDB();
+  buildBlobs();
+  renderHome();
+  if(navigator.storage && navigator.storage.persist){
+    navigator.storage.persist().catch(()=>{});
+  }
+  if('serviceWorker' in navigator){
+    navigator.serviceWorker.register('sw.js').catch(()=>{});
+  }
+})();
+</script>
+</body>
+</html>
