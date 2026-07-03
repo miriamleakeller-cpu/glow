@@ -20,7 +20,7 @@
 
 <!-- E-book library (cached by the service worker for offline use) -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/epub.js/0.3.93/epub.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/epubjs/dist/epub.min.js"></script>
 
 <style>
 /* ========== Palette ========== */
@@ -34,6 +34,7 @@
   --violet:#8455EA;
   --yellow:#F9EE4A;
   --lightpink:#F1BFE9;
+  --hotpink:#E86BA8;
   --green:#1FA45B;
   --blue:#6E8FE8;
   --orange:#F79438;
@@ -107,11 +108,11 @@ input[type=file]{display:none}
 }
 
 /* ========== Home: lava blobs ========== */
-.blobfield{position:relative;height:560px;margin-top:10px}
+.blobfield{position:relative;height:calc(100dvh - 225px);min-height:620px;margin-top:10px}
 .blob-btn{position:absolute;border:none;background:none;padding:0;cursor:pointer;animation:drift 9s ease-in-out infinite alternate}
 .blob-btn:active{transform:scale(.95)}
 .blob{
-  width:180px;height:172px;position:relative;
+  width:192px;height:184px;position:relative;
   animation:morph 8s ease-in-out infinite alternate;
   display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px
 }
@@ -130,36 +131,36 @@ input[type=file]{display:none}
   50%{transform:translate(8px,-16px)}
   100%{transform:translate(-7px,10px)}
 }
-#blob-med {top:0;left:2%;animation-duration:8.5s}
-#blob-read{top:96px;right:0;animation-duration:7.2s;animation-delay:-3s}
-#blob-ex  {bottom:150px;left:4%;animation-duration:9.4s;animation-delay:-5s}
-#blob-gr  {bottom:0;right:8%;animation-duration:7.9s;animation-delay:-1.5s}
+#blob-med {top:0;left:0;animation-duration:8.5s}
+#blob-read{top:24%;right:0;animation-duration:7.2s;animation-delay:-3s}
+#blob-ex  {bottom:24%;left:3%;animation-duration:9.4s;animation-delay:-5s}
+#blob-gr  {bottom:0;right:5%;animation-duration:7.9s;animation-delay:-1.5s}
 #blob-med .blob{
   background:radial-gradient(circle at 30% 28%, var(--yellow), transparent 58%),
              radial-gradient(circle at 72% 70%, var(--red), transparent 62%),
              var(--orange);
-  box-shadow:0 0 70px -12px var(--orange);
+  box-shadow:0 0 55px -16px var(--orange);
   animation-delay:-2s;
 }
 #blob-read .blob{
   background:radial-gradient(circle at 68% 26%, var(--green), transparent 55%),
              radial-gradient(circle at 26% 72%, var(--sky), transparent 62%),
              var(--darkgreen);
-  box-shadow:0 0 70px -12px var(--green);
+  box-shadow:0 0 55px -16px var(--green);
   animation-delay:-4s;
 }
 #blob-ex .blob{
   background:radial-gradient(circle at 30% 30%, var(--sky), transparent 58%),
              radial-gradient(circle at 74% 68%, var(--violet), transparent 62%),
              var(--blue);
-  box-shadow:0 0 70px -12px var(--sky);
+  box-shadow:0 0 55px -16px var(--sky);
   animation-delay:-6s;
 }
 #blob-gr .blob{
-  background:radial-gradient(circle at 30% 24%, var(--red), transparent 60%),
-             radial-gradient(circle at 74% 76%, var(--red), transparent 55%),
-             var(--lightpink);
-  box-shadow:0 0 70px -12px var(--red);
+  background:radial-gradient(circle at 30% 24%, var(--red), transparent 62%),
+             radial-gradient(circle at 76% 78%, var(--red), transparent 55%),
+             var(--hotpink);
+  box-shadow:0 0 55px -16px var(--red);
   animation-delay:-1s;
 }
 
@@ -176,9 +177,16 @@ input[type=file]{display:none}
   transition:transform .12s ease;
 }
 .tile:active{transform:scale(.98)}
-.tile.c-med{background:var(--orange);color:var(--black)}
-.tile.c-read{background:var(--darkgreen);color:var(--white)}
-.tile.c-ex{background:var(--blue);color:var(--black)}
+.tile.t-orange{background:var(--orange);color:var(--black)}
+.tile.t-yellow{background:var(--yellow);color:var(--black)}
+.tile.t-red{background:var(--red);color:var(--white)}
+.tile.t-hotpink{background:var(--hotpink);color:var(--white)}
+.tile.t-lightpink{background:var(--lightpink);color:var(--black)}
+.tile.t-darkgreen{background:var(--darkgreen);color:var(--white)}
+.tile.t-green{background:var(--green);color:var(--white)}
+.tile.t-sky{background:var(--sky);color:var(--black)}
+.tile.t-violet{background:var(--violet);color:var(--white)}
+.tile.t-blue{background:var(--blue);color:var(--black)}
 
 /* library lists */
 .list-item{display:flex;align-items:center;gap:10px;padding:13px 2px;border-bottom:1.5px solid #3A3A44}
@@ -193,6 +201,7 @@ input[type=text]{
   font-family:var(--sans);font-size:16px;color:var(--white);padding:13px 14px;margin-top:10px;outline:none
 }
 input[type=text]:focus{border-color:var(--violet)}
+input[type=text]:focus::placeholder{color:transparent}
 audio,video{width:100%;border-radius:18px;margin-top:14px}
 video{background:#000}
 
@@ -228,6 +237,45 @@ video{background:#000}
   position:absolute;font-family:var(--display);font-weight:700;white-space:nowrap;
   animation:drift 8s ease-in-out infinite alternate;
 }
+
+/* ========== Workout editor ========== */
+.wstep{display:flex;gap:6px;align-items:center;margin-top:10px}
+.wstep input[type=text]{margin-top:0;flex:1;min-width:0;padding:13px 12px}
+.wsecs{position:relative;flex:none;margin-top:0}
+.wsecs input{
+  width:88px;border:1.5px solid #3A3A44;border-radius:16px;background:var(--black);
+  font-family:var(--sans);font-size:16px;color:var(--white);padding:13px 34px 13px 10px;text-align:right;outline:none
+}
+.wsecs input:focus{border-color:var(--violet)}
+.wsecs span{position:absolute;right:11px;top:50%;transform:translateY(-50%);color:var(--gray);font-size:12px;pointer-events:none}
+.wmini{flex:none;width:28px;height:44px;border:none;background:none;color:var(--gray);font-size:16px;padding:0;cursor:pointer}
+.wmini:disabled{opacity:.25}
+
+/* ========== Workout player ========== */
+#view-wrun{position:fixed;inset:0;z-index:100;background:var(--black);color:var(--white);display:none;flex-direction:column}
+#view-wrun.active{display:flex}
+.wrun-body{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;padding:0 28px calc(env(safe-area-inset-bottom) + 24px)}
+.ring-wrap{position:relative;width:min(80vw,320px);aspect-ratio:1}
+.ring-wrap svg{width:100%;height:100%;transform:rotate(90deg) scaleX(-1)} /* empties counter-clockwise from the top */
+.ring-track{fill:none;stroke:var(--darkgray);stroke-width:11}
+.ring-fill{
+  fill:none;stroke:url(#ringgrad);stroke-width:11;stroke-linecap:round;
+  transition:opacity .6s ease; /* the countdown transition is added via .ticking */
+}
+.ring-fill.ticking{transition:stroke-dashoffset .2s linear, opacity .6s ease}
+.ring-center{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:0 44px}
+.ring-center div{font-family:var(--display);font-size:24px;font-weight:700;text-align:center;line-height:1.3;overflow-wrap:anywhere}
+.wrun-next{color:var(--gray);font-size:15px;text-align:center;min-height:20px}
+#wrun-btn{
+  width:auto;min-height:42px;padding:10px 24px;font-size:14px;
+  background:transparent;border:1.5px solid #3A3A44;color:var(--gray)
+}
+
+/* ========== Workout overview ========== */
+.wover-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 2px;border-bottom:1.5px solid #3A3A44}
+.wover-row:last-child{border-bottom:none}
+.wover-row .wname{font-weight:600;font-size:16px;color:var(--white)}
+.wover-row .wsec{color:var(--gray);font-size:14px;flex:none}
 
 /* ========== Reader ========== */
 #view-reader{position:fixed;inset:0;z-index:100;background:var(--black);color:var(--white);display:none;flex-direction:column}
@@ -283,9 +331,9 @@ video{background:#000}
 <div id="menu">
   <button class="close" aria-label="Close menu" onclick="toggleMenu(false)">✕</button>
   <button class="item" onclick="toggleMenu(false); show('home')"><i style="background:var(--violet)"></i>Home</button>
-  <button class="item" onclick="toggleMenu(false); show('library')"><i style="background:var(--orange)"></i>Library</button>
   <button class="item" onclick="toggleMenu(false); show('calendar')"><i style="background:var(--blue)"></i>Streak</button>
-  <button class="item" onclick="toggleMenu(false); show('cloud')"><i style="background:var(--lightpink)"></i>Archive</button>
+  <button class="item" onclick="toggleMenu(false); show('cloud')"><i style="background:var(--hotpink)"></i>Archive</button>
+  <button class="item" onclick="toggleMenu(false); show('library')"><i style="background:var(--orange)"></i>Library</button>
 </div>
 
 <!-- ==================== HOME ==================== -->
@@ -336,11 +384,69 @@ video{background:#000}
 <section class="view" id="view-exercise">
   <div class="topbar">
     <button class="iconbtn" onclick="show('home')">←</button>
-    <h1>Exercises</h1>
+    <h1>Workout</h1>
   </div>
-  <p class="sub" id="sub-ex">Pick a video and move along.</p>
+  <p class="sub" id="sub-ex">Pick a workout and move along.</p>
   <div id="video-tiles"></div>
-  <video id="video-player" controls playsinline style="display:none"></video>
+</section>
+
+<!-- ==================== WORKOUT EDITOR ==================== -->
+<section class="view" id="view-wedit">
+  <div class="topbar">
+    <button class="iconbtn" onclick="show('library')">←</button>
+    <h1 id="wedit-title">New workout</h1>
+  </div>
+
+  <div class="card">
+    <h3>Name</h3>
+    <input type="text" id="wedit-name" placeholder="e.g. Physio exercises">
+  </div>
+
+  <div class="card">
+    <h3>Exercises</h3>
+    <div id="wedit-steps"></div>
+    <button class="btn ghost" style="margin-top:14px" onclick="weditAddStep()">＋ add exercise</button>
+  </div>
+
+  <button class="btn" style="margin-top:16px" onclick="weditSave()">Save workout</button>
+</section>
+
+<!-- ==================== WORKOUT OVERVIEW ==================== -->
+<section class="view" id="view-wover">
+  <div class="topbar">
+    <button class="iconbtn" onclick="show('exercise')">←</button>
+    <h1 id="wover-title"></h1>
+  </div>
+  <p class="sub" id="wover-time"></p>
+  <div class="card" id="wover-list"></div>
+  <button class="btn" style="margin-top:16px" onclick="startWorkoutFromOverview()">Start workout</button>
+</section>
+
+<!-- ==================== WORKOUT PLAYER (fullscreen) ==================== -->
+<section id="view-wrun">
+  <div class="reader-bar">
+    <button class="iconbtn" onclick="stopWorkout()">✕</button>
+    <div class="reader-title" id="wrun-title"></div>
+  </div>
+  <div class="wrun-body">
+    <div class="ring-wrap">
+      <svg viewBox="0 0 220 220">
+        <defs>
+          <linearGradient id="ringgrad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#1AAEFC"/>
+            <stop offset="38%" stop-color="#8455EA"/>
+            <stop offset="72%" stop-color="#E86BA8"/>
+            <stop offset="100%" stop-color="#F79438"/>
+          </linearGradient>
+        </defs>
+        <circle class="ring-track" cx="110" cy="110" r="96"/>
+        <circle class="ring-fill" id="ring-fill" cx="110" cy="110" r="96"/>
+      </svg>
+      <div class="ring-center"><div id="wrun-current"></div></div>
+    </div>
+    <div class="wrun-next" id="wrun-next"></div>
+    <button class="btn" id="wrun-btn" onclick="wrunButton()">Pause</button>
+  </div>
 </section>
 
 <!-- ==================== GRATITUDE ==================== -->
@@ -370,7 +476,7 @@ video{background:#000}
     <h3>Meditations</h3>
     <div id="lib-audio-list"><p class="empty">No meditations yet.</p></div>
     <label class="btn ghost" style="margin-top:14px" for="audio-upload">＋ add audio</label>
-    <input type="file" id="audio-upload" accept="audio/*">
+    <input type="file" id="audio-upload" accept="audio/*,.mp3,.m4a,.aac,.wav">
   </div>
 
   <div class="card">
@@ -381,11 +487,11 @@ video{background:#000}
   </div>
 
   <div class="card">
-    <h3>Exercises</h3>
-    <div id="lib-video-list"><p class="empty">No exercises yet.</p></div>
-    <label class="btn ghost" style="margin-top:14px" for="video-upload">＋ add video</label>
-    <input type="file" id="video-upload" accept="video/*">
+    <h3>Workouts</h3>
+    <div id="lib-workout-list"><p class="empty">No workouts yet.</p></div>
+    <button class="btn ghost" style="margin-top:14px" onclick="openWorkoutEditor(null)">＋ create workout</button>
   </div>
+
 </section>
 
 <!-- ==================== CALENDAR ==================== -->
@@ -412,7 +518,7 @@ video{background:#000}
     <div class="legend">
       <span><i class="dot-med"></i>Meditation</span>
       <span><i class="dot-read"></i>Reading</span>
-      <span><i class="dot-ex"></i>Exercises</span>
+      <span><i class="dot-ex"></i>Workout</span>
       <span><i class="dot-gr"></i>Gratitude</span>
     </div>
   </div>
@@ -517,9 +623,9 @@ function show(name){
   if(name==='home') renderHome();
   if(name==='calendar') renderCalendar();
   if(name==='cloud'){ renderCloud(); renderGratitudeList(); }
-  if(name==='meditate') renderTiles('audio','audio-tiles','c-med', playAudio, 'No meditations yet. Add audio files in the library.', 'sub-med');
-  if(name==='read') renderTiles('book','book-tiles','c-read', openBook, 'No books yet. Add epub files in the library.', 'sub-read');
-  if(name==='exercise') renderTiles('video','video-tiles','c-ex', playVideo, 'No exercises yet. Add video files in the library.', 'sub-ex');
+  if(name==='meditate') renderTiles('audio','audio-tiles', playAudio, 'No meditations yet. Add audio files in the library.', 'sub-med', 'Add more audio files in the library.');
+  if(name==='read') renderTiles('book','book-tiles', openBook, 'No books yet. Add epub files in the library.', 'sub-read', 'Add more epub files in the library.');
+  if(name==='exercise') renderTiles('workout','video-tiles', openWorkoutRun, 'No exercises yet. Create a workout in the library.', 'sub-ex', 'Add more workouts in the library.');
   if(name==='library') renderLibraryLists();
 }
 
@@ -546,7 +652,7 @@ async function computeStreak(){
 const BLOBS = [
   {id:'blob-med',  kind:'med',  label:'Meditation', view:'meditate'},
   {id:'blob-read', kind:'read', label:'Reading',    view:'read'},
-  {id:'blob-ex',   kind:'ex',   label:'Exercises',  view:'exercise'},
+  {id:'blob-ex',   kind:'ex',   label:'Workout',    view:'exercise'},
   {id:'blob-gr',   kind:'gr',   label:'Gratitude',  view:'gratitude'},
 ];
 function buildBlobs(){
@@ -573,7 +679,7 @@ async function renderHome(){
 const FILE_META = {
   audio:{list:'lib-audio-list', dot:'var(--orange)',    noun:'meditation', empty:'No meditations yet.'},
   book: {list:'lib-book-list',  dot:'var(--darkgreen)', noun:'book',       empty:'No books yet.'},
-  video:{list:'lib-video-list', dot:'var(--blue)',      noun:'exercise',   empty:'No exercises yet.'},
+  workout:{list:'lib-workout-list', dot:'var(--blue)',  noun:'workout',    empty:'No workouts yet.'},
 };
 async function addFile(type, file){
   const fallback = file.name.replace(/\.[^.]+$/,'');
@@ -586,7 +692,6 @@ async function addFile(type, file){
 }
 document.getElementById('audio-upload').addEventListener('change', e => { if(e.target.files[0]) addFile('audio', e.target.files[0]); e.target.value=''; });
 document.getElementById('book-upload').addEventListener('change',  e => { if(e.target.files[0]) addFile('book',  e.target.files[0]); e.target.value=''; });
-document.getElementById('video-upload').addEventListener('change', e => { if(e.target.files[0]) addFile('video', e.target.files[0]); e.target.value=''; });
 
 async function renderLibraryLists(){
   const all = await dbAll('files');
@@ -605,6 +710,7 @@ async function renderLibraryLists(){
         <button class="li-act" aria-label="Delete">✕</button>`;
       const [renameBtn, delBtn] = row.querySelectorAll('.li-act');
       renameBtn.onclick = async () => {
+        if(type === 'workout'){ openWorkoutEditor(it); return; }
         const n = await askText('New name:', it.name);
         if(n && n.trim()){ it.name = n.trim(); await dbPut('files', it); renderLibraryLists(); }
       };
@@ -621,19 +727,34 @@ async function renderLibraryLists(){
 }
 
 /* ===================== Colored tiles in each activity ===================== */
-async function renderTiles(type, containerId, colorClass, onPick, emptyMsg, subId){
+/* first tile in the category color, then cycling through the other colors */
+const TILE_CYCLES = {
+  audio:['t-orange','t-yellow','t-red','t-lightpink'],
+  book: ['t-darkgreen','t-green','t-sky','t-violet'],
+  workout:['t-blue','t-violet','t-sky','t-lightpink'],
+};
+function makeTile(name, colorClass, onPick){
+  const t = document.createElement('button');
+  t.className = 'tile ' + colorClass;
+  t.innerHTML = `<span>${esc(name)}</span><span>›</span>`;
+  t.onclick = onPick;
+  return t;
+}
+async function renderTiles(type, containerId, onPick, emptyMsg, subId, hintMsg){
   const items = (await dbAll('files')).filter(f => f.type === type).sort((a,b)=>a.added-b.added);
   const el = document.getElementById(containerId);
   const sub = subId ? document.getElementById(subId) : null;
   if(sub) sub.style.display = items.length ? 'block' : 'none';
   if(!items.length){ el.innerHTML = '<p class="empty">' + emptyMsg + '</p>'; return; }
   el.innerHTML = '';
-  for(const it of items){
-    const t = document.createElement('button');
-    t.className = 'tile ' + colorClass;
-    t.innerHTML = `<span>${esc(it.name)}</span><span>›</span>`;
-    t.onclick = () => onPick(it);
-    el.appendChild(t);
+  const cycle = TILE_CYCLES[type];
+  items.forEach((it, i) => el.appendChild(makeTile(it.name, cycle[i % cycle.length], () => onPick(it))));
+  if(hintMsg){
+    const hint = document.createElement('p');
+    hint.className = 'empty';
+    hint.style.marginTop = '10px';
+    hint.textContent = hintMsg;
+    el.appendChild(hint);
   }
 }
 
@@ -677,6 +798,12 @@ async function openBook(rec){
   document.getElementById('reader-foot').textContent = 'Opening\u2026';
   relocations = 0;
 
+  if(typeof ePub === 'undefined' || typeof JSZip === 'undefined'){
+    document.getElementById('reader-foot').textContent =
+      'The reader could not load. Open the app once with internet, then try again.';
+    return;
+  }
+  try{
   const buf = await rec.blob.arrayBuffer();
   currentBook = ePub(buf);
   rendition = currentBook.renderTo('epub-area', {width:'100%', height:'100%', flow:'paginated', spread:'none'});
@@ -706,6 +833,9 @@ async function openBook(rec){
   });
   currentBook.locations.generate(600).catch(()=>{});
   document.getElementById('reader-foot').textContent = 'Tap left or right to turn pages';
+  }catch(err){
+    document.getElementById('reader-foot').textContent = 'This book could not be opened.';
+  }
 }
 function closeReader(){
   document.getElementById('view-reader').classList.remove('active');
@@ -727,13 +857,296 @@ function readerFont(dir){
   dbPut('settings', {key:'readerFont', value:fontPct});
 }
 
-/* ===================== Exercises (done when the video ends) ===================== */
-function playVideo(item){
-  const p = document.getElementById('video-player');
-  p.src = URL.createObjectURL(item.blob);
-  p.style.display = 'block';
-  p.onended = () => markDone('ex');
-  p.play().catch(()=>{});
+/* ===================== Workouts: editor ===================== */
+let weditCurrent = null; /* {id?, name, steps:[{name,secs}]} */
+
+function openWorkoutEditor(existing){
+  weditCurrent = existing
+    ? {id: existing.id, name: existing.name, steps: existing.steps.map(s => ({...s})), added: existing.added}
+    : {name:'', steps:[{name:'', secs:30}, {name:'', secs:30}, {name:'', secs:30}]};
+  document.getElementById('wedit-title').textContent = existing ? 'Edit workout' : 'New workout';
+  document.getElementById('wedit-name').value = weditCurrent.name;
+  renderWeditSteps();
+  show('wedit');
+}
+function renderWeditSteps(){
+  const el = document.getElementById('wedit-steps');
+  el.innerHTML = '';
+  weditCurrent.steps.forEach((s, i) => {
+    const row = document.createElement('div');
+    row.className = 'wstep';
+    row.innerHTML = `<input type="text" placeholder="Exercise ${i+1}">
+      <div class="wsecs"><input type="number" inputmode="numeric" min="5" step="5"><span>sec</span></div>
+      <button class="wmini" aria-label="Move up">↑</button>
+      <button class="wmini" aria-label="Move down">↓</button>
+      <button class="wmini" aria-label="Remove">✕</button>`;
+    const nameIn = row.querySelector('input[type=text]');
+    const secsIn = row.querySelector('input[type=number]');
+    nameIn.value = s.name; secsIn.value = s.secs;
+    nameIn.oninput = () => s.name = nameIn.value;
+    secsIn.oninput = () => s.secs = parseInt(secsIn.value, 10) || 0;
+    const [upBtn, downBtn, delBtn] = row.querySelectorAll('.wmini');
+    upBtn.disabled = i === 0;
+    downBtn.disabled = i === weditCurrent.steps.length - 1;
+    upBtn.onclick = () => moveStep(i, -1);
+    downBtn.onclick = () => moveStep(i, 1);
+    delBtn.onclick = () => { weditCurrent.steps.splice(i,1); renderWeditSteps(); };
+    el.appendChild(row);
+  });
+}
+function moveStep(i, dir){
+  const j = i + dir;
+  if(j < 0 || j >= weditCurrent.steps.length) return;
+  [weditCurrent.steps[i], weditCurrent.steps[j]] = [weditCurrent.steps[j], weditCurrent.steps[i]];
+  renderWeditSteps();
+}
+function weditAddStep(){
+  weditCurrent.steps.push({name:'', secs:30});
+  renderWeditSteps();
+}
+async function weditSave(){
+  const name = document.getElementById('wedit-name').value.trim() || 'Workout';
+  const steps = weditCurrent.steps
+    .map(s => ({name: s.name.trim(), secs: Math.round(s.secs)}))
+    .filter(s => s.name && s.secs >= 3);
+  if(!steps.length){ toast('Add at least one exercise'); return; }
+  const rec = {type:'workout', name, steps, added: weditCurrent.added || Date.now()};
+  if(weditCurrent.id) rec.id = weditCurrent.id;
+  await dbPut('files', rec);
+  show('library');
+  toast('Saved \u201C' + name + '\u201D');
+}
+
+/* ===================== Workouts: player (gradient ring + gong + calm voice) ===================== */
+let W = null;            /* running workout state */
+let overWorkout = null;  /* workout shown in the overview */
+let wakeLock = null;
+let audioCtx = null;
+const RING_C = 2 * Math.PI * 96;
+
+/* --- calm voice --- */
+let cachedVoice = null;
+function pickVoice(){
+  const vs = speechSynthesis.getVoices();
+  if(!vs.length) return null;
+  const score = v => {
+    if(!v.lang || !v.lang.toLowerCase().startsWith('en')) return -1;
+    let s = 0;
+    if(/premium/i.test(v.name)) s += 4;
+    if(/enhanced/i.test(v.name)) s += 3;
+    if(/ava|zoe|samantha|serena|karen|moira|allison/i.test(v.name)) s += 2;
+    if(v.lang === 'en-US') s += 1;
+    return s;
+  };
+  const best = vs.filter(v => score(v) >= 0).sort((a,b) => score(b) - score(a))[0];
+  return best || null;
+}
+if('speechSynthesis' in window){
+  speechSynthesis.onvoiceschanged = () => { cachedVoice = pickVoice(); };
+}
+function speakAnnounce(text, onend){
+  try{
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    cachedVoice = cachedVoice || pickVoice();
+    if(cachedVoice){ u.voice = cachedVoice; u.lang = cachedVoice.lang; }
+    else u.lang = 'en-US';
+    u.rate = 0.85; u.pitch = 1;
+    if(onend){ u.onend = onend; u.onerror = onend; }
+    speechSynthesis.speak(u);
+    return true;
+  }catch(_){ if(onend) onend(); return false; }
+}
+
+/* --- soft gong (synthesized, no beeps) --- */
+function ensureAudio(){
+  try{
+    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    if(audioCtx.state === 'suspended') audioCtx.resume();
+  }catch(_){}
+}
+function playGong(){
+  try{
+    ensureAudio();
+    if(!audioCtx) return;
+    const t = audioCtx.currentTime;
+    const master = audioCtx.createGain();
+    master.gain.setValueAtTime(0.0001, t);
+    master.gain.exponentialRampToValueAtTime(0.45, t + 0.03);
+    master.gain.exponentialRampToValueAtTime(0.0001, t + 2.6);
+    master.connect(audioCtx.destination);
+    [98, 147, 196, 247].forEach((f, i) => {
+      const o = audioCtx.createOscillator();
+      o.type = 'sine';
+      o.frequency.value = f * (1 + i * 0.003);
+      const g = audioCtx.createGain();
+      g.gain.value = 0.5 / (i + 1);
+      o.connect(g); g.connect(master);
+      o.start(t); o.stop(t + 2.7);
+    });
+  }catch(_){}
+}
+
+/* --- overview before starting --- */
+function openWorkoutRun(w){
+  overWorkout = w;
+  document.getElementById('wover-title').textContent = w.name;
+  const total = w.steps.reduce((a,s) => a + s.secs, 0) + w.steps.length * 3;
+  document.getElementById('wover-time').textContent =
+    'about ' + Math.max(1, Math.round(total / 60)) + ' min';
+  const list = document.getElementById('wover-list');
+  list.innerHTML = '';
+  for(const s of w.steps){
+    const row = document.createElement('div');
+    row.className = 'wover-row';
+    row.innerHTML = `<span class="wname">${esc(s.name)}</span><span class="wsec">${s.secs} sec</span>`;
+    list.appendChild(row);
+  }
+  show('wover');
+}
+function startWorkoutFromOverview(){
+  if(!overWorkout || !overWorkout.steps.length) return;
+  ensureAudio();                 /* unlock sound on this tap */
+  try{ speakAnnounce(' '); }catch(_){} /* unlock speech on this tap (iOS) */
+  W = {name: overWorkout.name, steps: overWorkout.steps.map(s => ({...s})),
+       idx: 0, state: 'announcing', remaining: 0, timer: null};
+  document.getElementById('wrun-title').textContent = W.name;
+  document.getElementById('wrun-btn').textContent = 'Pause';
+  document.getElementById('view-wrun').classList.add('active');
+  if(navigator.wakeLock) navigator.wakeLock.request('screen').then(l => wakeLock = l).catch(()=>{});
+  beginStep(0, 'First up: ' + W.steps[0].name);
+}
+
+/* --- steps --- */
+function ringReset(){
+  /* refill gently: the whole ring fades back in with its gradient, no rewind animation */
+  const ring = document.getElementById('ring-fill');
+  ring.classList.remove('ticking');
+  ring.style.strokeDasharray = RING_C;
+  ring.style.strokeDashoffset = 0;
+  ring.style.opacity = 0;
+  requestAnimationFrame(() => requestAnimationFrame(() => { ring.style.opacity = 1; }));
+}
+function beginStep(idx, announceText){
+  const step = W.steps[idx];
+  W.idx = idx;
+  W.state = 'announcing';
+  W.remaining = step.secs;
+  ringReset();
+  document.getElementById('wrun-current').textContent = step.name;
+  const next = W.steps[idx + 1];
+  document.getElementById('wrun-next').textContent = next ? 'Next up: ' + next.name : 'Last one!';
+  playGong();
+  /* the timer only starts once the announcement has finished */
+  let started = false;
+  const go = () => {
+    if(started || !W) return;
+    started = true;
+    if(W.state === 'announcing'){ W.state = 'running'; startStepTimer(); }
+    else W.pendingStart = true; /* paused during the announcement */
+  };
+  setTimeout(() => speakAnnounce(announceText || step.name, () => setTimeout(go, 250)), 550);
+  setTimeout(go, 7000); /* fallback if speech is unavailable */
+}
+function startStepTimer(){
+  const ring = document.getElementById('ring-fill');
+  ring.classList.add('ticking');
+  const step = W.steps[W.idx];
+  const endAt = Date.now() + W.remaining * 1000;
+  clearInterval(W.timer);
+  W.timer = setInterval(() => {
+    W.remaining = Math.max(0, (endAt - Date.now()) / 1000);
+    ring.style.strokeDashoffset = RING_C * (1 - W.remaining / step.secs);
+    if(W.remaining <= 0){
+      clearInterval(W.timer);
+      if(W.idx + 1 >= W.steps.length) finishWorkout();
+      else beginStep(W.idx + 1);
+    }
+  }, 150);
+}
+function finishWorkout(){
+  W.state = 'done';
+  playGong();
+  setTimeout(() => speakAnnounce('Workout complete. Well done.'), 550);
+  markDone('ex');
+  ringReset();
+  document.getElementById('wrun-current').textContent = 'Workout complete';
+  document.getElementById('wrun-next').textContent = '';
+  document.getElementById('wrun-btn').textContent = 'Close';
+}
+function wrunButton(){
+  if(!W) return;
+  if(W.state === 'done'){ stopWorkout(); return; }
+  if(W.state === 'paused'){
+    W.state = 'running';
+    document.getElementById('wrun-btn').textContent = 'Pause';
+    if(W.pendingStart){ W.pendingStart = false; }
+    startStepTimer();
+  } else { /* running or announcing */
+    clearInterval(W.timer);
+    W.state = 'paused';
+    document.getElementById('wrun-btn').textContent = 'Resume';
+  }
+}
+function stopWorkout(){
+  if(W && W.timer) clearInterval(W.timer);
+  try{ speechSynthesis.cancel(); }catch(_){}
+  if(wakeLock){ wakeLock.release().catch(()=>{}); wakeLock = null; }
+  W = null;
+  document.getElementById('view-wrun').classList.remove('active');
+  show('exercise');
+}
+
+/* ===================== Starter content (imported once on first use) =====================
+   Put files named exactly like this in the same GitHub folder as index.html:
+   starter-meditation-1.mp3, starter-meditation-2.mp3, starter-book-1.epub, starter-book-2.epub */
+const STARTERS = [
+  {url:'starter-meditation-1.mp3', type:'audio', name:'Mindful Breathing'},
+  {url:'starter-meditation-2.mp3', type:'audio', name:'Body Scan'},
+  {url:'starter-book-1.epub',      type:'book',  name:'Starter book 1'},
+  {url:'starter-book-2.epub',      type:'book',  name:'Starter book 2'},
+];
+const STARTER_WORKOUTS = [
+  {name:'Posture Exercises', steps:[
+    {name:'Cat-Cow', secs:60}, {name:'Wall Angels', secs:60}, {name:'Prone Cobra', secs:60},
+    {name:'Bird-Dog', secs:60}, {name:'Child\u2019s Pose', secs:60}
+  ]},
+  {name:'Pilates for Runners', steps:[
+    {name:'Clam Shells left', secs:45}, {name:'Clam Shells right', secs:45}, {name:'Deadbugs', secs:60},
+    {name:'One-Legged Bridge left', secs:45}, {name:'One-Legged Bridge right', secs:45},
+    {name:'Side Plank left', secs:45}, {name:'Side Plank right', secs:45}, {name:'Calf Raises', secs:60}
+  ]},
+];
+async function seedStarters(){
+  /* built-in workouts */
+  if(!(await dbGet('settings','seeded-workouts'))){
+    for(const w of STARTER_WORKOUTS){
+      await dbPut('files', {type:'workout', name:w.name, steps:w.steps, added:Date.now()});
+    }
+    await dbPut('settings', {key:'seeded-workouts', value:true});
+  }
+  /* files from the GitHub folder */
+  for(const s of STARTERS){
+    const flagKey = 'seeded-' + s.url;
+    if(await dbGet('settings', flagKey)) continue;
+    try{
+      const r = await fetch(s.url);
+      if(!r.ok) continue;
+      const blob = await r.blob();
+      if(!blob || blob.size < 100) continue;
+      let name = s.name;
+      if(s.type === 'book' && typeof ePub !== 'undefined'){
+        try{
+          const b = ePub(await blob.arrayBuffer());
+          const meta = await b.loaded.metadata;
+          if(meta && meta.title) name = meta.title;
+          b.destroy();
+        }catch(_){}
+      }
+      await dbPut('files', {type:s.type, name, blob, added:Date.now()});
+      await dbPut('settings', {key:flagKey, value:true});
+    }catch(_){}
+  }
 }
 
 /* ===================== Calendar ===================== */
@@ -807,6 +1220,7 @@ async function renderCloud(){
   await openDB();
   buildBlobs();
   renderHome();
+  seedStarters().catch(()=>{});
   if(navigator.storage && navigator.storage.persist){
     navigator.storage.persist().catch(()=>{});
   }
