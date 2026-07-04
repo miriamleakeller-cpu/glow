@@ -1304,28 +1304,43 @@ async function seedStarters(){
     }
     await dbPut('settings', {key:'seeded-workout-notes', value:true});
   }
-  /* files from the GitHub folder */
-  for(const s of STARTERS){
+  /* files from the GitHub folder: load them all at the same time (not one
+     after another) and let each one appear the moment it is ready. */
+  const seedOne = async s => {
     const flagKey = 'seeded-' + s.url;
-    if(await dbGet('settings', flagKey)) continue;
+    if(await dbGet('settings', flagKey)) return;
     try{
       const r = await fetch(s.url);
-      if(!r.ok) continue;
+      if(!r.ok) return;
       const blob = await r.blob();
-      if(!blob || blob.size < 100) continue;
-      let name = s.name;
+      if(!blob || blob.size < 100) return;
+      /* store immediately with the given name so it shows up right away */
+      const id = await dbPut('files', {type:s.type, name:s.name, blob, added:Date.now()});
+      await dbPut('settings', {key:flagKey, value:true});
+      refreshSeedViews();
+      /* read the real book title afterwards, without holding anything up */
       if(s.type === 'book' && typeof ePub !== 'undefined'){
         try{
           const b = ePub(await blob.arrayBuffer());
           const meta = await b.loaded.metadata;
-          if(meta && meta.title) name = meta.title;
           b.destroy();
+          if(meta && meta.title){
+            const rec = await dbGet('files', id);
+            if(rec){ rec.name = meta.title; await dbPut('files', rec); refreshSeedViews(); }
+          }
         }catch(_){}
       }
-      await dbPut('files', {type:s.type, name, blob, added:Date.now()});
-      await dbPut('settings', {key:flagKey, value:true});
     }catch(_){}
-  }
+  };
+  await Promise.all(STARTERS.map(seedOne));
+}
+/* re-draw whichever list is currently visible so new starter files pop in */
+function refreshSeedViews(){
+  if(document.getElementById('view-library').classList.contains('active')) renderLibraryLists();
+  if(document.getElementById('view-meditate').classList.contains('active'))
+    renderTiles('audio','audio-tiles', playAudio, 'No meditations yet. Add audio files in the library.', 'sub-med', 'Add more audio files in the library.');
+  if(document.getElementById('view-read').classList.contains('active'))
+    renderTiles('book','book-tiles', openBook, 'No books yet. Add epub files in the library.', 'sub-read', 'Add more epub files in the library.');
 }
 
 /* ===================== Calendar ===================== */

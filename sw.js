@@ -3,7 +3,7 @@
    in CACHE (v1 -> v2 -> v3 ...) so your iPhone loads the new
    version instead of the stored one. */
 
-const CACHE = 'glow-v3';
+const CACHE = 'glow-v4';
 
 const FILES = [
   './',
